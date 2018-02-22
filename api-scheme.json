@@ -1,41 +1,231 @@
 [
-{ "name": "asinfo",
-  "desc": "ASN Overview",
-  "path": "as-overview",
-  "consume": [
-    { "key": "resource", "desc": "Target ASN", "required": true }
-  ],
-  "produce": [
-    { "key": ".resource", "desc": "ASN" },
-    { "key": ".announced", "desc": "AS announced" },
-    { "key": ".holder", "desc": "AS Name" },
-    { "key": ".block", "nested": [
-        { "key": ".desc", "desc": "Block desc." },
-        { "key": ".name", "desc": "Block name" }
-      ]
-    }
-  ]
-},
-{ "name": "pathlen",
-  "desc": "AS Path Length",
-  "path": "as-path-length",
-  "consume":  [
-    { "key": "resource", "desc": "Target ASN", "required": true },
-    { "key": "sort_by", "desc": "Sort: number/count/location/geo", "required": false }
-  ],
-  "produce": [
-    { "key": ".stats []",
-      "array": [
-        {"key": ".location", "desc": "From"},
-        {"key": ".stripped .avg", "desc": "avg. (strip)"},
-        {"key": ".stripped .max", "desc": "max. (strip)"},
-        {"key": ".stripped .min", "desc": "min. (strip)"},
-        {"key": ".unstripped .avg", "desc": "avg."},
-        {"key": ".unstripped .max", "desc": "max."},
-        {"key": ".unstripped .min", "desc": "min."}
-      ]
-    }
-  ]
-}
+  {
+    "name": "asinfo",
+    "desc": "ASN Overview",
+    "path": "as-overview",
+    "consume": [
+      {
+        "key": "resource",
+        "desc": "Target ASN",
+        "required": true
+      }
+    ],
+    "produce": [
+      {
+        "key": ".resource",
+        "desc": "ASN"
+      },
+      {
+        "key": ".announced",
+        "desc": "AS announced"
+      },
+      {
+        "key": ".holder",
+        "desc": "AS Name"
+      },
+      {
+        "key": ".block",
+        "nested": [
+          {
+            "key": ".desc",
+            "desc": "Block desc."
+          },
+          {
+            "key": ".name",
+            "desc": "Block name"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "pathlen",
+    "desc": "AS Path Length",
+    "path": "as-path-length",
+    "consume": [
+      {
+        "key": "resource",
+        "desc": "Target ASN",
+        "required": true
+      },
+      {
+        "key": "sort_by",
+        "desc": "Sort: number/count/location/geo",
+        "required": false
+      }
+    ],
+    "produce": [
+      {
+        "key": ".stats []",
+        "array": [
+          {
+            "key": ".location",
+            "desc": "From"
+          },
+          {
+            "key": ".stripped .avg",
+            "desc": "avg. (strip)"
+          },
+          {
+            "key": ".stripped .max",
+            "desc": "max. (strip)"
+          },
+          {
+            "key": ".stripped .min",
+            "desc": "min. (strip)"
+          },
+          {
+            "key": ".unstripped .avg",
+            "desc": "avg."
+          },
+          {
+            "key": ".unstripped .max",
+            "desc": "max."
+          },
+          {
+            "key": ".unstripped .min",
+            "desc": "min."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "rirc",
+    "desc": "AS Routing Consistency",
+    "path": "as-routing-consistency",
+    "consume": [
+      {
+        "key": "resource",
+        "desc": "Target ASN",
+        "required": true
+      }
+    ],
+    "produce": [
+      {
+        "key": ".authority",
+        "desc": "ASN RIR"
+      },
+      {
+        "key": ".exports []",
+        "array": [
+          {
+            "key": ".peer",
+            "desc": "Export to"
+          },
+          {
+            "key": ".in_bgp",
+            "desc": "Exported"
+          },
+          {
+            "key": ".in_whois",
+            "desc": "In IRR"
+          }
+        ]
+      },
+      {
+        "key": ".imports []",
+        "array": [
+          {
+            "key": ".peer",
+            "desc": "Import from"
+          },
+          {
+            "key": ".in_bgp",
+            "desc": "Imported"
+          },
+          {
+            "key": ".in_whois",
+            "desc": "In IRR"
+          }
+        ]
+      },
+      {
+        "key": ".prefixes []",
+        "array": [
+          {
+            "key": ".prefix",
+            "desc": "Prefix"
+          },
+          {
+            "key": ".in_bgp",
+            "desc": "Announced"
+          },
+          {
+            "key": ".in_whois",
+            "desc": "In IRR"
+          },
+          {
+            "key": ".irr_sources",
+            "desc": "RIR source"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "neighbours",
+    "desc": "AS neighbours",
+    "path": "asn-neighbours",
+    "consume": [
+      {
+        "key": "resource",
+        "desc": "Target ASN",
+        "required": true
+      },
+      {
+        "key": "starttime",
+        "desc": "query time (ISO8601/Unix Timestamp)",
+        "required": false
+      }
+    ],
+    "produce": [
+      {
+        "key": ".neighbour_counts",
+        "nested": [
+          {
+            "key": ".left",
+            "desc": "# Left nei."
+          },
+          {
+            "key": ".right",
+            "desc": "# Right nei."
+          },
+          {
+            "key": ".unique",
+            "desc": "# Unique nei."
+          },
+          {
+            "key": ".uncertain",
+            "desc": "# Other nei."
+          }
+        ]
+      },
+      {
+        "key": ".neighbours []",
+        "array": [
+          {
+            "key": ".asn",
+            "desc": "ASN"
+          },
+          {
+            "key": ".type",
+            "desc": "Type"
+          },
+          {
+            "key": ".power",
+            "desc": "# Routes"
+          },
+          {
+            "key": ".v4_peers",
+            "desc": "# v4 Peer"
+          },
+          {
+            "key": ".v6_peers",
+            "desc": "# v6 Peer"
+          }
+        ]
+      }
+    ]
+  }
 ]
-
