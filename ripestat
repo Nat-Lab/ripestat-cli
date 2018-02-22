@@ -1,5 +1,8 @@
 #!/bin/bash
 
+b=$(tput bold)
+n=$(tput sgr0)
+
 scheme=./api-scheme.json
 api_prefix='https://stat.ripe.net/data/'
 api_suffix='/data.json?'
@@ -48,11 +51,24 @@ _do_cmd() {
     read sid; read code; read msg; read data;
     printf "%-15s: %s\n" "Server" "$sid" >&2
     case "$status" in
-      ok) echo "$data" ;;
-      error) echo "$msg" >&2 ;;
-      maintenance) echo "The data call is undergoing maintenance, try again later." ;;
+      ok)
+        echo "$data"
+        _parse_msg "$msg" >&2
+      ;;
+      error) _parse_msg "$msg" >&2 ;;
+      maintenance) echo "The data call is undergoing maintenance, try again later." >&2 ;;
     esac
   }; done
+}
+
+_do_eval() {
+  [ -z "$1" ] && return
+  [[ "$1" == _* ]] && return
+  [ -n "$(type -t "$1")" ] && [ "$(type -t "$1")" = function ] && eval "$*"
+}
+
+_parse_msg() {
+  jq -cr '.[] | "\(.[0]): \(.[1])"' <<< "$1" | while read line; do printf "%-15s: %s\n" "Message" "$line"; done
 }
 
 _parse_rslt() {
@@ -75,12 +91,16 @@ _parse_rslt() {
   }; done
 }
 
+exit() {
+  builtin exit 0
+}
+
 help() {
   [ -z "$1" ] && {
     echo "Avaliable commands are:"
     jq -cr ". [] | .name, .desc" "$scheme" | while read name; do {
       read help
-      echo "$name: $help"
+      printf "%-15s: %s\n" "$name" "$help"
     }; done
     echo "use help [command] to get help for a command."
   }
@@ -98,14 +118,14 @@ help() {
   }
 }
 
-while IFS="" read -r -e -d $'\n' -p "ripestat> " cmd; do {
+while IFS="" read -r -e -d $'\n' -p "${b}ripestat>$n " cmd; do {
   history -s "$cmd"
   api="$(_try_get_cmd $cmd)"
   [ ! -z "$api" ] && {
     _do_cmd_check $cmd <<< "$api" || continue
     _do_cmd <<< "$api" | _parse_rslt "$(jq '.produce' <<< "$api")"
   }
-  [ -z "$api" ] && eval "$cmd"
+  [ -z "$api" ] && _do_eval $cmd
 }; done
 
-exit 0
+builtin exit 0
