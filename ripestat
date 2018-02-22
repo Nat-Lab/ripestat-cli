@@ -56,7 +56,7 @@ _do_cmd() {
 }
 
 _parse_rslt() {
-  rslt="$(cat)"
+  local rslt="$(cat)"
   jq -cr '.[] | .key, .desc, .nested, .array' <<< "$1" | while read key; do {
     read desc; read produce; read array
     [[ ! "$produce" == "null" ]] && _parse_rslt "$produce" <<< "$(jq -cr "$key" <<< "$rslt")"
