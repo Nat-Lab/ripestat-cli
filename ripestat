@@ -1,0 +1,111 @@
+#!/bin/bash
+
+scheme=./api-scheme.json
+api_prefix='https://stat.ripe.net/data/'
+api_suffix='/data.json?'
+
+[ ! -e "$scheme" ] && echo "API scheme missing, exiting." >&2 && exit 1
+
+_try_get_cmd() {
+  [ -z "$1" ] && return
+  local name="$(jq -cr ". [] .name" "$scheme" | grep "^$1" | head -n1)"
+  [ -z "$name" ] && return
+  jq --arg cmd "$name" -cr '. [] | select(.name == $cmd)' "$scheme"
+}
+
+_set_param() {
+  shift 1
+  obj="$(cat)"
+  while read expr; do {
+    [[ "$expr" == *=* ]] || continue
+    var="$(cut -d'=' -f1 <<< "$expr")"
+    val="$(cut -d'=' -f2 <<< "$expr")"
+    r_var="$(jq -cr '.consume [] .key'  <<< "$obj" | grep "^$var" | head -n1)"
+    [ -z "$r_var" ] && continue
+    eval "$r_var=$val"
+  }; done <<< "$(tr ' ' '\n' <<< "$*")"
+}
+
+_do_cmd_check() {
+  obj="$(cat)"
+  _set_param $* <<< "$obj"
+  jq -cr '.consume [] | .key, .desc, .required' <<< "$obj" | {
+    while read key; do {
+      read desc; read req
+      ($req) || continue
+      [ -z "${!key}" ] && echo "$key ($desc) required but empty." >&2 && exit 1
+    }; done
+    exit 0
+  }
+  return $?
+}
+
+_do_cmd() {
+  curl -s "$(jq -cr '.path, .consume [] .key' | {
+    read path; echo -n "$api_prefix$path$api_suffix"
+    while read key; do [ ! -z "${!key}" ] && echo -n "$arg$key=${!key}&" || echo "$arg"; done
+  })" | jq -cr '.status, .server_id, .status_code, .messages, .data' | while read status; do {
+    read sid; read code; read msg; read data;
+    printf "%-15s: %s\n" "Server" "$sid" >&2
+    case "$status" in
+      ok) echo "$data" ;;
+      error) echo "$msg" >&2 ;;
+      maintenance) echo "The data call is undergoing maintenance, try again later." ;;
+    esac
+  }; done
+}
+
+_parse_rslt() {
+  rslt="$(cat)"
+  jq -cr '.[] | .key, .desc, .nested, .array' <<< "$1" | while read key; do {
+    read desc; read produce; read array
+    [[ ! "$produce" == "null" ]] && _parse_rslt "$produce" <<< "$(jq -cr "$key" <<< "$rslt")"
+    [[ ! "$desc" == "null" ]] && printf "%-15s: %s\n" "$desc" "$(jq -cr "$key" <<< "$rslt")"
+    [[ ! "$array" == "null" ]] && {
+      keys="$(jq -cr '.[] .key' <<< "$array")"
+      _len=$(wc -l <<< "$keys")
+      _keys="$(tr '\n' ',' <<< "$keys" | sed -e 's/,$//;')"
+      let i=0
+      jq -cr "$_keys" <<< "$(jq -cr "$key" <<< "$rslt")" | while read line; do {
+        [ $(($i % $_len)) = 0 ] && echo "=========="
+        printf "%-15s: %s\n" "$(jq -cr '.['$(($i % $_len))'] .desc' <<< "$array")" "$line" >&2
+        let i++
+      }; done
+    }
+  }; done
+}
+
+help() {
+  [ -z "$1" ] && {
+    echo "Avaliable commands are:"
+    jq -cr ". [] | .name, .desc" "$scheme" | while read name; do {
+      read help
+      echo "$name: $help"
+    }; done
+    echo "use help [command] to get help for a command."
+  }
+  [ ! -z "$1" ] && {
+    res="$(_try_get_cmd "$1")"
+    [ -z "$res" ] && echo "No help found for \"$1\"." && return
+    jq -cr '.name, .desc' <<< "$res" | {
+      read name; read desc
+      echo "$name ($desc)"
+    }
+    jq -cr '.consume [] | .key, .desc, .required' <<< "$res" | while read key; do {
+     read desc; read req
+     printf "%-15s: %s %s\n" "$key" "$desc" "$( ($req) && echo "(required)" )"
+    }; done
+  }
+}
+
+while IFS="" read -r -e -d $'\n' -p "ripestat> " cmd; do {
+  history -s "$cmd"
+  api="$(_try_get_cmd $cmd)"
+  [ ! -z "$api" ] && {
+    _do_cmd_check $cmd <<< "$api" || continue
+    _do_cmd <<< "$api" | _parse_rslt "$(jq '.produce' <<< "$api")"
+  }
+  [ -z "$api" ] && eval "$cmd"
+}; done
+
+exit 0

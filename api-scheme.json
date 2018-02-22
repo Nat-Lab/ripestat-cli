@@ -1,0 +1,41 @@
+[
+{ "name": "asinfo",
+  "desc": "ASN Overview",
+  "path": "as-overview",
+  "consume": [
+    { "key": "resource", "desc": "Target ASN", "required": true }
+  ],
+  "produce": [
+    { "key": ".resource", "desc": "ASN" },
+    { "key": ".announced", "desc": "AS announced" },
+    { "key": ".holder", "desc": "AS Name" },
+    { "key": ".block", "nested": [
+        { "key": ".desc", "desc": "Block desc." },
+        { "key": ".name", "desc": "Block name" }
+      ]
+    }
+  ]
+},
+{ "name": "pathlen",
+  "desc": "AS Path Length",
+  "path": "as-path-length",
+  "consume":  [
+    { "key": "resource", "desc": "Target ASN", "required": true },
+    { "key": "sort_by", "desc": "Sort: number/count/location/geo", "required": false }
+  ],
+  "produce": [
+    { "key": ".stats []",
+      "array": [
+        {"key": ".location", "desc": "From"},
+        {"key": ".stripped .avg", "desc": "avg. (strip)"},
+        {"key": ".stripped .max", "desc": "max. (strip)"},
+        {"key": ".stripped .min", "desc": "min. (strip)"},
+        {"key": ".unstripped .avg", "desc": "avg."},
+        {"key": ".unstripped .max", "desc": "max."},
+        {"key": ".unstripped .min", "desc": "min."}
+      ]
+    }
+  ]
+}
+]
+
